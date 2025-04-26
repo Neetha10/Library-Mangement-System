@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🌆 Twilight Town Events</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Josefin Sans', sans-serif;
+      background: linear-gradient(to bottom, #ffdab9, #f6e7ff);
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      background-image: url('E1.png');
+    }
+    h1 {
+      text-align: center;
+      color: #5c3d99;
+    }
+    .event-card {
+      background: #fff8f0;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 15px auto;
+      max-width: 600px;
+      border-left: 6px solid #ffa07a;
+      transition: 0.3s ease;
+    }
+    .event-card:hover {
+      transform: scale(1.02);
+    }
+    button {
+      background-color: #5c3d99;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #7b4bb7;
+    }
+  </style>
+</head>
+<body>
+  <h1>📅 Twilight Town: Events & Exhibitions</h1>
+  <div id="eventsContainer">Loading...</div>
+
+  <script>
+    async function fetchEvents() {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/events", {
+        headers: {
+          Authorization: "Bearer " + token
+        }
+      });
+  
+      let data;
+      try {
+        data = await res.json();
+        console.log("📦 Raw response from /api/events:", data);
+  
+        const events = data.rows || data;  // Support both structures
+  
+        if (!Array.isArray(events)) throw new Error("Not an array");
+  
+        const container = document.getElementById("eventsContainer");
+        container.innerHTML = '';
+  
+        if (events.length === 0) {
+          container.innerHTML = '<p>No events found.</p>';
+          return;
+        }
+  
+        events.forEach(e => {
+          const div = document.createElement("div");
+          div.className = 'event-card';
+          div.innerHTML = `
+            <h3>${e.EVENT_NAME} (${e.EVENT_TYPE})</h3>
+            <p><b>Date:</b> ${new Date(e.EVENT_DATE).toLocaleString()}</p>
+            <button onclick="registerEvent(${e.EVENT_ID}, '${e.EVENT_TYPE}')">Register</button>
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        console.error("❌ Failed to load events:", err.message);
+        document.getElementById("eventsContainer").innerHTML = "<p>Error loading events.</p>";
+      }
+    }
+  
+    fetchEvents();
+  </script>
+  
+<script>
+    async function registerEvent(eventId, type) {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/register-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify({ eventId, eventType: type })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ Registered successfully!");
+      } else {
+        alert("❌ Failed: " + data.message);
+      }
+    }
+
+    fetchEvents();
+  </script>
+</body>
+</html>

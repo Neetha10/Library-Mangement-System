@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>📚 Reserve a Study Room | Twilight Library</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(to bottom, #ffe4c4, #f6e7ff);
+      font-family: 'Josefin Sans', sans-serif;
+      padding: 20px;
+      background-image: url('E1.png');
+    }
+
+    h1 {
+      text-align: center;
+      color: #5c3d99;
+    }
+
+    .form-card {
+      background: #fff8f0;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 600px;
+      margin: 30px auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      border-left: 8px solid #ffa07a;
+    }
+
+    label {
+      display: block;
+      margin: 15px 0 5px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #5c3d99;
+      color: white;
+      padding: 10px 20px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    button:hover {
+      background: #774fc1;
+    }
+
+    .glow {
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow {
+      from {
+        box-shadow: 0 0 8px #ffdead;
+      }
+      to {
+        box-shadow: 0 0 20px #ffd700;
+      }
+    }
+    
+    #loadingOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: #7b4bb7;
+      z-index: 9999;
+    }
+    
+    .error-message {
+      color: #e74c3c;
+      margin: 15px 0;
+      padding: 10px;
+      border-radius: 8px;
+      background-color: #fdeaea;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingOverlay">🔮 Loading room options...</div>
+  <h1>✨ Reserve a Study Room</h1>
+
+  <div class="form-card glow">
+    <div id="errorMessage" class="error-message"></div>
+    <form id="reservationForm">
+      <label for="room">Select Room</label>
+      <select name="roomId" id="room" required>
+        <option disabled selected>Select a room</option>
+      </select>
+
+      <label for="date">Date</label>
+      <input type="date" name="date" id="date" required />
+
+      <label for="startTime">Start Time</label>
+      <input type="time" name="startTime" id="startTime" required />
+
+      <label for="endTime">End Time</label>
+      <input type="time" name="endTime" id="endTime" required />
+
+      <label for="groupSize">Group Size</label>
+      <input type="number" name="groupSize" id="groupSize" min="1" required />
+
+      <label for="topic">Topic Description</label>
+      <textarea name="topicDescription" id="topic" rows="3" placeholder="e.g., Group Study - Machine Learning" required></textarea>
+
+      <button type="submit">🔮 Reserve</button>
+    </form>
+  </div>
+
+  <script>
+    // Initialize the reserve room view both on direct load and when loaded via dashboard
+    function initReserveRoomView() {
+      console.log("🧙 initReserveRoomView running...");
+      
+      // Expose the function globally for the dashboard to call
+      window.initReserveRoomView = initReserveRoomView;
+      
+      const token = localStorage.getItem("token");
+      const errorMessage = document.getElementById("errorMessage");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      
+      if (!token) {
+        errorMessage.textContent = "⚠️ You must be logged in to view this page.";
+        errorMessage.style.display = "block";
+        loadingOverlay.style.display = "none";
+        return;
+      }
+
+      async function loadRooms() {
+        try {
+          console.log("📡 Fetching rooms...");
+          const res = await fetch('/api/rooms', {
+            headers: {
+              Authorization: "Bearer " + token
+            }
+          });
+
+          if (!res.ok) {
+            throw new Error(`Server responded with status: ${res.status}`);
+          }
+
+          const response = await res.json();
+          console.log("📦 Room response:", response);
+
+          const rooms = Array.isArray(response.rows) ? response.rows : response;
+          const roomSelect = document.getElementById("room");
+
+          if (!Array.isArray(rooms) || rooms.length === 0) {
+            roomSelect.innerHTML = `<option disabled selected>No rooms available</option>`;
+            throw new Error("No rooms available or invalid response format");
+          }
+
+          // Clear existing options except the first one
+          while (roomSelect.options.length > 1) {
+            roomSelect.remove(1);
+          }
+
+          rooms.forEach(room => {
+            const option = document.createElement("option");
+            option.value = room.ROOM_ID;
+            option.text = `Room ${room.ROOM_ID} (Capacity: ${room.CAPACITY})`;
+            roomSelect.appendChild(option);
+          });
+          
+          console.log("✅ Rooms loaded successfully!");
+        } catch (err) {
+          console.error("❌ Failed to fetch rooms:", err);
+          errorMessage.textContent = `Failed to load rooms: ${err.message}`;
+          errorMessage.style.display = "block";
+        } finally {
+          loadingOverlay.style.display = "none";
+        }
+      }
+
+      // Form submission handler
+      document.getElementById("reservationForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        // Show loading overlay during submission
+        loadingOverlay.textContent = "🌟 Processing your reservation...";
+        loadingOverlay.style.display = "flex";
+        
+        const formData = new FormData(e.target);
+        const payload = {
+          roomId: formData.get("roomId"),
+          topicDescription: formData.get("topicDescription"),
+          date: formData.get("date"),
+          startTime: formData.get("startTime"),
+          endTime: formData.get("endTime"),
+          groupSize: formData.get("groupSize")
+        };
+
+        try {
+          const res = await fetch("/api/reservations/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.message || `Failed with status: ${res.status}`);
+          }
+          
+          const result = await res.json();
+          alert("🌟 Reserved successfully!");
+          e.target.reset();
+          
+        } catch (error) {
+          console.error("❌ Reservation failed:", error);
+          errorMessage.textContent = `Reservation failed: ${error.message}`;
+          errorMessage.style.display = "block";
+        } finally {
+          loadingOverlay.style.display = "none";
+        }
+      });
+      
+      // Load rooms right away
+      loadRooms();
+    }
+    
+    // Initialize both on direct load and when loaded via dashboard
+    document.addEventListener('DOMContentLoaded', initReserveRoomView);
+    
+    // If already loaded (when injected by dashboard), run initialization now
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      console.log("🔄 Page already loaded, initializing directly...");
+      initReserveRoomView();
+    }
+  </script>
+</body>
+</html>

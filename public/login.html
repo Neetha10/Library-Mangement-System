@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🌸 Login to Twilight Library</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background: url('Background.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Josefin Sans', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      width: 100%;
+      border-left: 8px solid #ffa07a;
+      animation: fadeIn 1s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1 {
+      text-align: center;
+      color: #7b4b94;
+      margin-bottom: 30px;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+      color: #7b4b94;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #9b5cbd;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 12px;
+      width: 100%;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(155, 92, 189, 0.3);
+    }
+    button:hover {
+      background-color: #7b4b94;
+    }
+    .error {
+      color: red;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .register-link {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.9rem;
+    }
+    .register-link a {
+      color: #7b4b94;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌸 Login to Twilight Library</h1>
+    <div id="loginForm">
+      <label for="email">📧 Email Address</label>
+      <input type="email" id="email" required>
+
+      <label for="password">🔒 Password</label>
+      <input type="password" id="password" required>
+
+      <label for="role">🧝‍♀️ Select Role</label>
+      <select id="role" required>
+        <option value="" disabled selected>Select your role</option>
+        <option value="customer">Customer</option>
+        <option value="author">Author</option>
+        <option value="sponsor">Sponsor</option>
+      </select>
+
+      <button id="loginButton">✨ Login</button>
+      <div id="errorMessage" class="error"></div>
+    </div>
+    <div class="register-link">
+      Don't have an account? <a href="register.html">Register here</a>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAHOJtKIGyBEy6oY9RtqU8W1vvtToIS2ao",
+      authDomain: "empyrean-surge-453502-k6.firebaseapp.com",
+      projectId: "empyrean-surge-453502-k6",
+      storageBucket: "empyrean-surge-453502-k6.firebasestorage.app",
+      messagingSenderId: "1048387947782",
+      appId: "1:1048387947782:web:ff21b572c51ee7f1a72287",
+      measurementId: "G-68LFENHPJL"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    const loginButton = document.getElementById('loginButton');
+    const errorMessage = document.getElementById('errorMessage');
+
+    loginButton.addEventListener('click', async () => {
+      errorMessage.textContent = '';
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('role').value;
+
+      if (!email || !password || !role) {
+        errorMessage.textContent = 'Email, password, and role are required';
+        return;
+      }
+
+      try {
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // ✅ Fetch fresh token
+        const idToken = await user.getIdToken(true);
+        localStorage.setItem('token', idToken);
+        localStorage.setItem('role', role);
+
+        // ✅ Setup auto-refresh token listener
+        firebase.auth().onIdTokenChanged(async (user) => {
+          if (user) {
+            const refreshedToken = await user.getIdToken();
+            localStorage.setItem('token', refreshedToken);
+          }
+        });
+
+        // ✅ Redirect to dashboard
+        window.location.href = 'dashboard.html';
+
+      } catch (error) {
+        console.error('Login error:', error);
+        errorMessage.textContent = error.message || 'Login failed';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>📚 My Room Reservations</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(to bottom, #f0e5ff, #ffffff);
+      font-family: 'Josefin Sans', sans-serif;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #5c3d99;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: #fffdfc;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 15px auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-left: 6px solid #b794f4;
+      max-width: 600px;
+      position: relative;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #7a4dbc;
+    }
+
+    .card p {
+      margin: 5px 0;
+    }
+
+    .cancel-btn {
+      background-color: #e67e7e;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      margin-top: 10px;
+    }
+
+    .cancel-btn:hover {
+      background-color: #ff4c4c;
+      transform: scale(1.05);
+      box-shadow: 0 0 12px #ffc5c5;
+    }
+
+    .sparkle {
+      animation: sparkle 0.8s ease-out;
+    }
+
+    @keyframes sparkle {
+      0% { background-color: #fffbe6; }
+      100% { background-color: #ffffff; }
+    }
+
+    .log-entry {
+      background-color: #fafafa;
+      border: 1px dashed #ccc;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    
+    #loadingOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: #7b4bb7;
+      z-index: 9999;
+    }
+    
+    .error-message {
+      background-color: #fdeaea;
+      color: #e74c3c;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      text-align: center;
+      display: none;
+    }
+    
+    .empty-message {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      padding: 20px;
+      background: rgba(183, 148, 244, 0.1);
+      border-radius: 10px;
+      margin: 20px auto;
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingOverlay">🔮 Fetching your magical reservations...</div>
+  
+  <h1>📖 My Study Room Reservations</h1>
+  
+  <div id="errorMessage" class="error-message"></div>
+
+  <div id="reservationList">
+    <p>🔄 Loading your reservations...</p>
+  </div>
+
+  <div style="margin-top: 40px">
+    <h2>📜 Cancelled Reservations</h2>
+    <div id="cancelLog"></div>
+  </div>
+
+  <script>
+    // Initialize the reservations view
+    function initReservationsView() {
+      console.log("🧙 initReservationsView running...");
+      
+      // Expose the function globally for the dashboard to call
+      window.initReservationsView = initReservationsView;
+      
+      const container = document.getElementById("reservationList");
+      const cancelLog = document.getElementById("cancelLog");
+      const errorMessage = document.getElementById("errorMessage");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      
+      async function loadReservations() {
+        try {
+          const token = localStorage.getItem("token");
+          
+          if (!token) {
+            errorMessage.textContent = "❌ You must be logged in to view your reservations.";
+            errorMessage.style.display = "block";
+            container.innerHTML = "";
+            loadingOverlay.style.display = "none";
+            return;
+          }
+          
+          console.log("📡 Fetching reservations...");
+          const res = await fetch("/api/reservations/my", {
+            headers: {
+              Authorization: "Bearer " + token
+            }
+          });
+          
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.message || `Server responded with status: ${res.status}`);
+          }
+          
+          const data = await res.json();
+          console.log("📦 Raw response from /api/reservations/my:", data);
+          
+          container.innerHTML = "";
+          
+          if (!data || !Array.isArray(data.reservations)) {
+            console.error("❌ Unexpected response format:", data);
+            throw new Error("Server returned unexpected data format");
+          }
+          
+          if (data.reservations.length === 0) {
+            container.innerHTML = "<div class='empty-message'>✨ You don't have any active reservations. Visit the Reserve Room section to book a study space.</div>";
+            return;
+          }
+          
+          data.reservations.forEach(r => {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+              <h3>Room ${r.ROOM_ID}</h3>
+              <p><strong>Topic:</strong> ${r.TOPIC_DESCRIPTION}</p>
+              <p><strong>Date:</strong> ${r.RESERVATION_DATE.split('T')[0]}</p>
+              <p><strong>Time:</strong> ${r.START_TIME} - ${r.END_TIME}</p>
+              <p><strong>Group Size:</strong> ${r.GROUP_SIZE}</p>
+              <button class="cancel-btn">Cancel</button>
+            `;
+            
+            card.querySelector(".cancel-btn").addEventListener("click", async () => {
+              const confirmCancel = confirm("Are you sure you want to cancel this reservation?");
+              if (!confirmCancel) return;
+              
+              loadingOverlay.textContent = "🌠 Cancelling your reservation...";
+              loadingOverlay.style.display = "flex";
+              
+              try {
+                const cancelRes = await fetch(`/api/reservations/${r.RESERVATION_ID}`, {
+                  method: "DELETE",
+                  headers: {
+                    Authorization: "Bearer " + token
+                  }
+                });
+                
+                if (!cancelRes.ok) {
+                  const errorData = await cancelRes.json().catch(() => ({}));
+                  throw new Error(errorData.message || `Failed to cancel: ${cancelRes.status}`);
+                }
+                
+                card.classList.add("sparkle");
+                setTimeout(() => card.remove(), 700);
+                
+                const logEntry = document.createElement("div");
+                logEntry.className = "log-entry";
+                logEntry.textContent = `Cancelled Room ${r.ROOM_ID} on ${r.RESERVATION_DATE.split('T')[0]}`;
+                cancelLog.appendChild(logEntry);
+                
+                // Check if all reservations are cancelled
+                setTimeout(() => {
+                  if (container.children.length === 0) {
+                    container.innerHTML = "<div class='empty-message'>✨ You don't have any active reservations. Visit the Reserve Room section to book a study space.</div>";
+                  }
+                }, 800);
+              } catch (error) {
+                console.error("❌ Cancel failed:", error);
+                errorMessage.textContent = `Failed to cancel reservation: ${error.message}`;
+                errorMessage.style.display = "block";
+              } finally {
+                loadingOverlay.style.display = "none";
+              }
+            });
+            
+            container.appendChild(card);
+          });
+          
+          console.log("✅ Reservations loaded successfully!");
+        } catch (error) {
+          console.error("❌ Failed to load reservations:", error);
+          errorMessage.textContent = `Failed to load reservations: ${error.message}`;
+          errorMessage.style.display = "block";
+          container.innerHTML = "";
+        } finally {
+          loadingOverlay.style.display = "none";
+        }
+      }
+      
+      // Load reservations immediately
+      loadReservations();
+    }
+    
+    // Initialize both on direct load and when loaded via dashboard
+    document.addEventListener('DOMContentLoaded', initReservationsView);
+    
+    // If already loaded (when injected by dashboard), run initialization now
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      console.log("🔄 Page already loaded, initializing directly...");
+      initReservationsView();
+    }
+  </script>
+</body>
+</html>

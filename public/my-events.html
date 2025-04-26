@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🎟️ My Registered Events</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Josefin Sans', sans-serif;
+      background: linear-gradient(to bottom, #e6e9f0, #eef1f5);
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #5c3d99;
+    }
+    .event-card {
+      background: #fff8f0;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 15px auto;
+      max-width: 600px;
+      border-left: 6px solid #ffa07a;
+    }
+    .event-type {
+      display: inline-block;
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+    .seminar {
+      background-color: #e0f2ff;
+      color: #0066cc;
+    }
+    .exhibition {
+      background-color: #ffefd5;
+      color: #ff8c00;
+    }
+    .empty-message {
+      text-align: center;
+      padding: 30px;
+      background: rgba(92, 61, 153, 0.1);
+      border-radius: 12px;
+      max-width: 600px;
+      margin: 50px auto;
+      color: #5c3d99;
+    }
+    #loadingOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: #7b4bb7;
+      z-index: 9999;
+    }
+    .error-message {
+      color: #e74c3c;
+      background-color: #fdeaea;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px auto;
+      max-width: 600px;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingOverlay">🔮 Fetching your magical events...</div>
+  
+  <h1>🎟️ My Registered Events</h1>
+  
+  <div id="errorMessage" class="error-message"></div>
+  
+  <div id="myEvents">Loading...</div>
+
+  <script>
+    // Initialize the my registered events view
+    function initMyEventRegistrationsView() {
+      console.log("🧙 initMyEventRegistrationsView running...");
+      
+      // Expose the function globally for the dashboard to call
+      window.initMyEventRegistrationsView = initMyEventRegistrationsView;
+      
+      const container = document.getElementById("myEvents");
+      const errorMessage = document.getElementById("errorMessage");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      
+      async function fetchMyEvents() {
+        try {
+          const token = localStorage.getItem("token");
+          
+          if (!token) {
+            errorMessage.textContent = "❌ You must be logged in to view your events.";
+            errorMessage.style.display = "block";
+            container.innerHTML = "";
+            loadingOverlay.style.display = "none";
+            return;
+          }
+          
+          console.log("📡 Fetching registered events...");
+          const res = await fetch("/api/events/my-events", {
+            headers: {
+              "Authorization": "Bearer " + token
+            }
+          });
+          
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.message || `Server responded with status: ${res.status}`);
+          }
+          
+          const events = await res.json();
+          console.log("📦 Received events:", events);
+          
+          if (!Array.isArray(events)) {
+            throw new Error("Server returned unexpected data format");
+          }
+          
+          container.innerHTML = '';
+          
+          if (events.length === 0) {
+            container.innerHTML = '<div class="empty-message">You have not registered for any events yet.</div>';
+            loadingOverlay.style.display = "none";
+            return;
+          }
+          
+          events.forEach(e => {
+            const div = document.createElement("div");
+            div.className = 'event-card';
+            
+            const date = new Date(e.EVENT_DATE);
+            const formattedDate = date.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            });
+            
+            const timeStr = date.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            });
+            
+            const typeClass = e.EVENT_TYPE ? e.EVENT_TYPE.toLowerCase() : '';
+            
+            div.innerHTML = `
+              <span class="event-type ${typeClass}">${e.EVENT_TYPE || 'Event'}</span>
+              <h3>${e.EVENT_NAME || 'Untitled Event'}</h3>
+              <p><b>Date:</b> ${formattedDate}</p>
+              <p><b>Time:</b> ${timeStr}</p>
+            `;
+            
+            container.appendChild(div);
+          });
+          
+          console.log("✅ Events displayed successfully!");
+        } catch (error) {
+          console.error("❌ Failed to load events:", error);
+          errorMessage.textContent = `Failed to load events: ${error.message}`;
+          errorMessage.style.display = "block";
+          container.innerHTML = "";
+        } finally {
+          loadingOverlay.style.display = "none";
+        }
+      }
+      
+      // Load events immediately
+      fetchMyEvents();
+    }
+    
+    // Initialize both on direct load and when loaded via dashboard
+    document.addEventListener('DOMContentLoaded', initMyEventRegistrationsView);
+    
+    // If already loaded (when injected by dashboard), run initialization now
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      console.log("🔄 Page already loaded, initializing directly...");
+      initMyEventRegistrationsView();
+    }
+  </script>
+</body>
+</html>

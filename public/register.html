@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Library Management System - Register</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .error { color: red; margin-top: 10px; }
+    .success { color: green; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Register for Library Management System</h1>
+
+  <div id="registrationForm">
+    <div class="form-group">
+      <label for="role">Role</label>
+      <select id="role" required>
+        <option value="">Select Role</option>
+        <option value="Customer">Customer</option>
+        <option value="Author">Author</option>
+        <option value="Sponsor">Sponsor</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="firstName">First Name</label>
+      <input type="text" id="firstName" required>
+    </div>
+    <div class="form-group">
+      <label for="lastName">Last Name</label>
+      <input type="text" id="lastName" required>
+    </div>
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" required>
+    </div>
+    <div class="form-group">
+      <label for="phoneNumber">Phone Number</label>
+      <input type="text" id="phoneNumber" required>
+    </div>
+    <div class="form-group">
+      <label for="identificationType">Identification Type</label>
+      <select id="identificationType" required>
+        <option value="">Select ID Type</option>
+        <option value="Passport">Passport</option>
+        <option value="SSN">SSN</option>
+        <option value="Driver License">Driver License</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="identificationNumber">Identification Number</label>
+      <input type="text" id="identificationNumber" required>
+    </div>
+
+    <button id="registerButton">Register</button>
+
+    <div id="errorMessage" class="error"></div>
+    <div id="successMessage" class="success"></div>
+  </div>
+
+  <p>Already have an account? <a href="login.html">Login here</a></p>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAHOJtKIGyBEy6oY9RtqU8W1vvtToIS2ao",
+      authDomain: "empyrean-surge-453502-k6.firebaseapp.com",
+      projectId: "empyrean-surge-453502-k6",
+      storageBucket: "empyrean-surge-453502-k6.appspot.com",
+      messagingSenderId: "1048387947782",
+      appId: "1:1048387947782:web:ff21b572c51ee7f1a72287",
+      measurementId: "G-68LFENHPJL"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    const registerButton = document.getElementById('registerButton');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+
+    registerButton.addEventListener('click', async () => {
+      errorMessage.textContent = '';
+      successMessage.textContent = '';
+
+      const role = document.getElementById('role').value;
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const phoneNumber = document.getElementById('phoneNumber').value.trim();
+      const identificationType = document.getElementById('identificationType').value;
+      const identificationNumber = document.getElementById('identificationNumber').value.trim();
+
+      if (!role || !firstName || !lastName || !email || !password || !phoneNumber || !identificationType || !identificationNumber) {
+        errorMessage.textContent = 'All fields are required.';
+        return;
+      }
+
+      try {
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+        const token = await user.getIdToken();
+
+        const response = await fetch('/api/auth/sync-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            phoneNumber,
+            identificationType,
+            identificationNumber,
+            role // 👈 Send role to backend
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          successMessage.textContent = 'Registration successful! Redirecting...';
+          setTimeout(() => window.location.href = '/login.html', 2000);
+        } else {
+          errorMessage.textContent = data.message || 'Registration failed.';
+        }
+      } catch (err) {
+        console.error('❌ Registration error:', err);
+        errorMessage.textContent = err.message || 'Registration failed.';
+      }
+    });
+  </script>
+</body>
+</html>

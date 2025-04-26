@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>✨ Twilight Library Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Josefin Sans', sans-serif;
+      background-color: #faf7fd;
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 240px;
+      padding: 20px;
+      background-color: #483a5d;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      border-radius: 0 20px 20px 0;
+    }
+
+    .sidebar h2 {
+      font-size: 1.6rem;
+      color: #f9dfff;
+      text-shadow: 1px 1px 2px #b082d1;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sidebar button {
+      background: #6e5e88;
+      border: 1px solid #9b84c7;
+      color: white;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 1rem;
+      text-align: left;
+      transition: 0.3s ease;
+    }
+
+    .sidebar button:hover {
+      background: #b49ddb;
+      color: #2c003e;
+    }
+
+    main {
+      flex-grow: 1;
+      padding: 30px;
+      overflow-y: auto;
+      background-color: #ffffff;
+      border-radius: 30px 0 0 30px;
+      box-shadow: -10px 0 20px rgba(0, 0, 0, 0.05);
+    }
+
+    h1 {
+      color: #663399;
+    }
+
+    .loading {
+      color: #666;
+      font-style: italic;
+    }
+
+    #loader {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      z-index: 999;
+    }
+
+    .loader-sparkle {
+      border: 4px solid #f3e5f5;
+      border-top: 4px solid #b39ddb;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      margin: 20px auto;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>🌸 Twilight</h2>
+    <button onclick="loadView('profile')">👤 Profile</button>
+    <button onclick="loadView('reserve-room')">🗼 Reserve Room</button>
+    <button onclick="loadView('reservations')">📒 My Reservations</button>
+    <button onclick="loadView('events')">🎟️ Events</button>
+    <button onclick="loadView('my-events')">🎓 My Event Registrations</button>
+    <button onclick="loadView('books')">📖 Book Catalog</button>
+    <button onclick="loadView('invoices')">📄 My Invoices</button>
+    <button onclick="logout()">📕 Logout</button>
+  </div>
+
+  <div id="loader">
+    <div class="loader-sparkle"></div>
+    <div>Loading Twilight magic...</div>
+  </div>
+
+  <main id="mainContent" style="display: none;">
+    <h1>✨ Welcome to Twilight Library ✨</h1>
+    <p class="loading">Loading your magical library experience...</p>
+  </main>
+
+  <!-- Firebase + Logic -->
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAHOJtKIGyBEy6oY9RtqU8W1vvtToIS2ao",
+      authDomain: "empyrean-surge-453502-k6.firebaseapp.com",
+      projectId: "empyrean-surge-453502-k6",
+      storageBucket: "empyrean-surge-453502-k6.firebasestorage.app",
+      messagingSenderId: "1048387947782",
+      appId: "1:1048387947782:web:ff21b572c51ee7f1a72287",
+      measurementId: "G-68LFENHPJL"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = "login.html";
+      } else {
+        const token = await user.getIdToken();
+        localStorage.setItem("token", token);
+        console.log("✅ Logged in:", user.email);
+      }
+    });
+
+    async function loadView(view) {
+      const main = document.getElementById("mainContent");
+      main.innerHTML = "<p class='loading'>Loading " + view + " section...</p>";
+
+      try {
+        const res = await fetch(`/${view}.html`);
+        const html = await res.text();
+
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+
+        const scripts = temp.querySelectorAll("script");
+        main.innerHTML = temp.innerHTML;
+
+        // Execute scripts one by one
+        for (const script of scripts) {
+          const newScript = document.createElement("script");
+          if (script.src) {
+            newScript.src = script.src;
+            newScript.onload = () => {
+              console.log(`✅ Loaded external script: ${script.src}`);
+            };
+          } else {
+            newScript.textContent = script.textContent;
+          }
+          await new Promise(resolve => {
+            document.body.appendChild(newScript);
+            setTimeout(resolve, 100); // Brief delay to ensure script execution
+          });
+        }
+
+        // Call initialization function if it exists
+        const initFunctionName = `init${view.charAt(0).toUpperCase() + view.slice(1)}View`;
+        if (window[initFunctionName] && typeof window[initFunctionName] === 'function') {
+          console.log(`✅ Calling ${initFunctionName}()`);
+          window[initFunctionName]();
+        }
+
+        console.log(`✅ Loaded ${view}.html and executed scripts`);
+      } catch (err) {
+        main.innerHTML = "<p class='loading'>⚠️ Failed to load section.</p>";
+        console.error("❌ Error loading view:", err);
+      }
+    }
+
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        localStorage.removeItem("token");
+        window.location.href = "/login.html";
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      setTimeout(async () => {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+        await loadView("profile"); // Load profile by default
+      }, 1500);
+    });
+  </script>
+</body>
+</html>

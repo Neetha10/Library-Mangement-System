@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>📚 My Borrowed Books</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Josefin Sans', sans-serif;
+      background: linear-gradient(to bottom, #f8f9fa, #e2e6ea);
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #5c3d99;
+      margin-bottom: 30px;
+    }
+    .book-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin: 15px auto;
+      max-width: 600px;
+      border-left: 6px solid #ffa07a;
+    }
+    .book-card button {
+      background: #5c3d99;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .book-card button:hover {
+      background: #7b4b94;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📚 My Borrowed Books</h1>
+  <div id="borrowedBooks">Loading...</div>
+
+  <script>
+    async function fetchBorrowedBooks() {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/rentals/my", {
+        headers: {
+          Authorization: "Bearer " + token
+        }
+      });
+
+      let rentals;
+      try {
+        rentals = await res.json();
+        if (!Array.isArray(rentals)) throw new Error("Not an array");
+      } catch (err) {
+        console.error("❌ Failed to load rentals:", err.message);
+        document.getElementById("borrowedBooks").innerHTML = "<p>Error loading borrowed books.</p>";
+        return;
+      }
+
+      const container = document.getElementById("borrowedBooks");
+      container.innerHTML = '';
+
+      if (rentals.length === 0) {
+        container.innerHTML = '<p>You have not borrowed any books yet.</p>';
+        return;
+      }
+
+      rentals.forEach(book => {
+        const div = document.createElement("div");
+        div.className = 'book-card';
+        div.innerHTML = `
+          <h3>📖 Book Copy ID: ${book.COPY_ID}</h3>
+          <p><strong>Borrowed Date:</strong> ${new Date(book.BORROWED_DATE).toLocaleDateString()}</p>
+          <p><strong>Expected Return:</strong> ${new Date(book.EXPECTED_RETURN_DATE).toLocaleDateString()}</p>
+          <p><strong>Status:</strong> ${book.RENTAL_STATUS}</p>
+          ${book.RENTAL_STATUS === 'Borrowed' ? `<button onclick="returnBook(${book.RENTAL_SERVICE_ID})">Return</button>` : ''}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function returnBook(rentalServiceId) {
+      const token = localStorage.getItem("token");
+
+      if (!confirm("Are you sure you want to return this book?")) return;
+
+      const res = await fetch(`/api/rentals/return/${rentalServiceId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: "Bearer " + token
+        }
+      });
+
+      const data = await res.json();
+      alert(data.message || 'Return complete');
+      fetchBorrowedBooks(); // Refresh list
+    }
+
+    fetchBorrowedBooks();
+  </script>
+
+</body>
+</html>

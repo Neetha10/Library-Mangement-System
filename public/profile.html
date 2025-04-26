@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>✨ Your Profile | Twilight Library</title>
+  <style>
+    body {
+      font-family: 'Josefin Sans', sans-serif;
+      background: linear-gradient(to bottom, #fff8f0, #f0f4ff);
+      padding: 20px;
+    }
+    .profile-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      border-left: 8px solid #9b59b6;
+    }
+    h1 {
+      text-align: center;
+      color: #5c3d99;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 20px;
+      background: #5c3d99;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #774fc1;
+    }
+    #loadingOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: #7b4bb7;
+      z-index: 9999;
+    }
+    .error-message {
+      color: #e74c3c;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background-color: #fdeaea;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingOverlay">🔮 Fetching your magical profile...</div>
+  <h1>🌟 Your Magical Profile</h1>
+
+  <div class="profile-card">
+    <div id="errorMessage" class="error-message">An error occurred while loading your profile. Please try again.</div>
+    <form id="profileForm">
+      <label for="firstName">First Name</label>
+      <input type="text" id="firstName" disabled />
+
+      <label for="lastName">Last Name</label>
+      <input type="text" id="lastName" disabled />
+
+      <label for="email">Email Address</label>
+      <input type="email" id="email" disabled />
+
+      <label for="phoneNumber">Phone Number</label>
+      <input type="text" id="phoneNumber" disabled />
+
+      <label for="identificationType">ID Type</label>
+      <input type="text" id="identificationType" disabled />
+
+      <label for="identificationNumber">ID Number</label>
+      <input type="text" id="identificationNumber" disabled />
+
+      <button type="button" id="editBtn">Edit</button>
+      <button type="submit" id="saveBtn" style="display: none">Save Changes</button>
+    </form>
+  </div>
+
+  <script>
+    // Auto-initialize as soon as the script loads
+    document.addEventListener("DOMContentLoaded", function() {
+      // Call initProfileView directly on load, even if not called from dashboard
+      console.log("🧙 Profile page loaded, initializing view...");
+      initProfileView();
+    });
+
+    function initProfileView() {
+      console.log("🧙 initProfileView running...");
+      
+      // Expose this function globally for the dashboard to call
+      window.initProfileView = initProfileView;
+      
+      const token = localStorage.getItem("token");
+      const errorMessage = document.getElementById("errorMessage");
+      
+      if (!token) {
+        errorMessage.textContent = "⚠️ You are not logged in. Please login again.";
+        errorMessage.style.display = "block";
+        document.getElementById("loadingOverlay").style.display = "none";
+        
+        // Redirect after showing the message
+        setTimeout(() => {
+          window.location.href = "/login.html";
+        }, 2000);
+        return;
+      }
+      
+      async function fetchProfile() {
+        try {
+          console.log("📡 Sending request to /api/auth/profile...");
+          
+          const res = await fetch("/api/auth/profile", {
+            headers: { Authorization: "Bearer " + token }
+          });
+          
+          console.log("📥 Received response with status:", res.status);
+          
+          if (!res.ok) {
+            throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+          }
+          
+          const data = await res.json();
+          console.log("📦 Response body:", data);
+          
+          if (!data.user) {
+            throw new Error("❌ Invalid profile response: Missing user data");
+          }
+          
+          const user = data.user;
+          console.log("✅ User data:", user);
+          
+          document.getElementById("firstName").value = user.firstName || "";
+          document.getElementById("lastName").value = user.lastName || "";
+          document.getElementById("email").value = user.email || "";
+          document.getElementById("phoneNumber").value = user.phoneNumber || "";
+          document.getElementById("identificationType").value = user.identificationType || "";
+          document.getElementById("identificationNumber").value = user.identificationNumber || "";
+          
+        } catch (error) {
+          console.error("❌ Failed to fetch profile:", error.message);
+          errorMessage.textContent = `❌ Failed to load profile: ${error.message}`;
+          errorMessage.style.display = "block";
+        } finally {
+          console.log("🔚 Hiding loader overlay");
+          document.getElementById("loadingOverlay").style.display = "none";
+        }
+      }
+      
+      // Start fetching profile data immediately
+      fetchProfile();
+      
+      document.getElementById("editBtn").addEventListener("click", () => {
+        document.querySelectorAll("#profileForm input").forEach(input => {
+          if (input.id !== "email") input.disabled = false;
+        });
+        document.getElementById("editBtn").style.display = "none";
+        document.getElementById("saveBtn").style.display = "inline-block";
+      });
+      
+      document.getElementById("profileForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        // Show loading overlay while saving
+        document.getElementById("loadingOverlay").style.display = "flex";
+        document.getElementById("loadingOverlay").textContent = "✨ Saving your magical profile...";
+        
+        const payload = {
+          firstName: document.getElementById("firstName").value,
+          lastName: document.getElementById("lastName").value,
+          phoneNumber: document.getElementById("phoneNumber").value,
+          identificationType: document.getElementById("identificationType").value,
+          identificationNumber: document.getElementById("identificationNumber").value
+        };
+        
+        try {
+          const res = await fetch("/api/auth/profile", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token
+            },
+            body: JSON.stringify(payload)
+          });
+          
+          if (res.ok) {
+            alert("✅ Profile updated successfully!");
+            location.reload();
+          } else {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.message || `Failed with status: ${res.status}`);
+          }
+        } catch (error) {
+          console.error("❌ Failed to update profile:", error.message);
+          errorMessage.textContent = `❌ Failed to update profile: ${error.message}`;
+          errorMessage.style.display = "block";
+          document.getElementById("loadingOverlay").style.display = "none";
+        }
+      });
+    }
+  </script>
+</body>
+</html>
