@@ -35,9 +35,9 @@ router.post('/register', async (req, res) => {
     await db.execute(`
       INSERT INTO NSH_CUSTOMER (
         CUSTOMER_ID, FIRST_NAME, LAST_NAME, PHONE_NUMBER,
-        EMAIL_ADDRESS, IDENTIFICATION_TYPE, IDENTIFICATION_NUMBER
+        EMAIL_ADDRESS, IDENTIFICATION_TYPE, IDENTIFICATION_NUMBER,ROLE
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [customerId, firstName, lastName, phone, email, idType, idNumber]);
+    `, [customerId, firstName, lastName, phone, email, idType, idNumber,role]);
 
     console.log('✅ Inserted into NSH_CUSTOMER.');
 

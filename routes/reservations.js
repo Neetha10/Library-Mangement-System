@@ -19,9 +19,9 @@ async function verifyToken(req, res, next) {
   }
 }
 
-// ✅ POST /api/reservations/create
+// ✅ POST /api/reservations/create (Book a room)
 router.post('/create', verifyToken, async (req, res) => {
-  const { roomId, topicDescription, date, startTime, endTime, groupSize } = req.body;
+  const { roomId, topicDescription, date, startTime, endTime, groupSize ,eventId} = req.body;
   const email = req.user.email;
 
   try {
@@ -32,14 +32,24 @@ router.post('/create', verifyToken, async (req, res) => {
     const customerId = custRows[0]?.CUSTOMER_ID;
     if (!customerId) return res.status(404).json({ message: 'Customer not found' });
 
-    await db.execute(
+    const { rowsAffected } = await db.execute(
       `INSERT INTO NSH_RESERVATION (
         RESERVATION_ID, TOPIC_DESCRIPTION, RESERVATION_DATE,
-        START_TIME, END_TIME, GROUP_SIZE, ROOM_ID, CUSTOMER_ID
-      ) VALUES (
-        NULL, ?, ?, ?, ?, ?, ?, ?
-      )`,
-      [topicDescription, date, startTime, endTime, groupSize, roomId, customerId]
+        START_TIME, END_TIME, GROUP_SIZE, ROOM_ID, CUSTOMER_ID,EVENT_ID
+      ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?)`,
+      [topicDescription, date, startTime, endTime, groupSize, roomId, customerId,eventId || null]
+    );
+
+    if (rowsAffected === 0) {
+      throw new Error('Failed to create reservation.');
+    }
+
+    // ✨ After inserting reservation, update room status to 'Occupied'
+    await db.execute(
+      `UPDATE NSH_ROOM
+       SET ROOM_STATUS = 'Occupied'
+       WHERE ROOM_ID = ?`,
+      [roomId]
     );
 
     res.status(201).json({ message: 'Room reserved successfully!' });
@@ -50,7 +60,7 @@ router.post('/create', verifyToken, async (req, res) => {
   }
 });
 
-// ✅ GET /api/reservations/my
+// ✅ GET /api/reservations/my (Fetch my reservations)
 router.get('/my', verifyToken, async (req, res) => {
   const email = req.user.email;
   console.log("📥 /my request from:", email);
@@ -60,7 +70,6 @@ router.get('/my', verifyToken, async (req, res) => {
       `SELECT CUSTOMER_ID FROM NSH_CUSTOMER WHERE EMAIL_ADDRESS = ?`,
       [email]
     );
-    console.log("🔍 Customer lookup result:", custRows);
 
     const customerId = custRows[0]?.CUSTOMER_ID;
     if (!customerId) {
@@ -86,7 +95,7 @@ router.get('/my', verifyToken, async (req, res) => {
   }
 });
 
-// ✅ DELETE /api/reservations/:reservationId
+// ✅ DELETE /api/reservations/:reservationId (Cancel reservation)
 router.delete('/:reservationId', verifyToken, async (req, res) => {
   const reservationId = req.params.reservationId;
   const email = req.user.email;
@@ -99,18 +108,46 @@ router.delete('/:reservationId', verifyToken, async (req, res) => {
     const customerId = custRows[0]?.CUSTOMER_ID;
     if (!customerId) return res.status(404).json({ message: 'Customer not found' });
 
-    const { rows: checkRows } = await db.execute(
-      `SELECT * FROM NSH_RESERVATION WHERE RESERVATION_ID = ? AND CUSTOMER_ID = ?`,
+    // 🧹 Find the ROOM_ID for this reservation
+    const { rows: reservationRows } = await db.execute(
+      `SELECT ROOM_ID FROM NSH_RESERVATION WHERE RESERVATION_ID = ? AND CUSTOMER_ID = ?`,
       [reservationId, customerId]
     );
-    if (checkRows.length === 0) {
+    if (reservationRows.length === 0) {
       return res.status(403).json({ message: 'Not allowed to cancel this reservation' });
     }
 
-    await db.execute(
+    const roomId = reservationRows[0].ROOM_ID;
+
+    // ❌ Delete the reservation
+    const { rowsAffected } = await db.execute(
       `DELETE FROM NSH_RESERVATION WHERE RESERVATION_ID = ?`,
       [reservationId]
     );
+
+    if (rowsAffected === 0) {
+      throw new Error('Failed to delete reservation.');
+    }
+
+    // 🔍 Check if there are any other future reservations for this room
+    const { rows: activeReservations } = await db.execute(
+      `SELECT COUNT(*) AS count
+       FROM NSH_RESERVATION
+       WHERE ROOM_ID = ? AND RESERVATION_DATE >= CURDATE()`,
+      [roomId]
+    );
+
+    const hasActiveReservations = activeReservations[0].count > 0;
+
+    if (!hasActiveReservations) {
+      // ✨ No more active reservations → Mark room as Available
+      await db.execute(
+        `UPDATE NSH_ROOM
+         SET ROOM_STATUS = 'Available'
+         WHERE ROOM_ID = ?`,
+        [roomId]
+      );
+    }
 
     res.status(200).json({ message: 'Reservation cancelled successfully' });
 
@@ -119,5 +156,30 @@ router.delete('/:reservationId', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Failed to cancel reservation', error: err.message });
   }
 });
+
+// DELETE /api/reservations/admin/:reservationId
+const { checkAdminRole } = require('../middleware/checkAdmin');
+
+router.delete('/admin/:reservationId', verifyToken, checkAdminRole, async (req, res) => {
+  const reservationId = req.params.reservationId;
+
+  try {
+    const { rowsAffected } = await db.execute(
+      `DELETE FROM NSH_RESERVATION WHERE RESERVATION_ID = ?`,
+      [reservationId]
+    );
+
+    if (rowsAffected === 0) {
+      return res.status(404).json({ message: 'Reservation not found' });
+    }
+
+    res.json({ message: 'Reservation deleted by admin' });
+  } catch (err) {
+    console.error("❌ Admin reservation delete failed:", err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+
 
 module.exports = router;

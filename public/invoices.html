@@ -1,10 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>My Invoices</title>
+  <meta charset="UTF-8">
+  <title>📜 My Magical Invoices | Twilight Library</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Josefin Sans', sans-serif;
+      background: linear-gradient(to bottom, #fff8f0, #f0f4ff);
+      padding: 20px;
+      background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+    }
+    h1 {
+      text-align: center;
+      color: #7b4b94;
+      margin-bottom: 30px;
+    }
+    .invoice-card {
+      background: #fff9f9;
+      border-radius: 16px;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+      padding: 25px;
+      margin: 20px auto;
+      max-width: 600px;
+      border-left: 8px solid #f7b267;
+      transition: 0.3s;
+    }
+    .invoice-card:hover {
+      transform: translateY(-5px);
+      background: #fff7fc;
+    }
+    .invoice-card p {
+      margin: 8px 0;
+      color: #444;
+      font-size: 1rem;
+    }
+    .no-invoices {
+      text-align: center;
+      font-size: 1.2rem;
+      color: #888;
+      margin-top: 50px;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>📄 My Invoices</h1>
+
+  <h1>📜 My Magical Invoices</h1>
   <div id="invoiceList">Loading...</div>
 
   <script>
@@ -15,65 +58,41 @@
           Authorization: 'Bearer ' + token
         }
       });
-      const invoices = await res.json();
+
+      let invoices;
+      try {
+        invoices = await res.json();
+        if (!Array.isArray(invoices)) throw new Error("Invalid invoice response");
+      } catch (err) {
+        console.error('❌ Failed to load invoices:', err.message);
+        document.getElementById('invoiceList').innerHTML = '<p class="no-invoices">❌ Failed to load invoices. Please try again later.</p>';
+        return;
+      }
+
       const container = document.getElementById('invoiceList');
       container.innerHTML = '';
 
       if (invoices.length === 0) {
-        container.innerHTML = '<p>No invoices found.</p>';
+        container.innerHTML = '<div class="no-invoices">✨ No invoices yet! Keep enjoying your magical reading journey. ✨</div>';
         return;
       }
 
       invoices.forEach(inv => {
         const div = document.createElement('div');
+        div.className = 'invoice-card';
         div.innerHTML = `
-          <hr>
-          <p><b>Invoice ID:</b> ${inv.INVOICE_ID}</p>
-          <p><b>Book:</b> ${inv.BOOK_NAME}</p>
-          <p><b>Copy ID:</b> ${inv.COPY_ID}</p>
-          <p><b>Amount:</b> ₹${inv.INVOICE_AMOUNT}</p>
-          <p><b>Date:</b> ${inv.INVOICE_DATE}</p>
+          <p><strong>Invoice ID:</strong> ${inv.INVOICE_ID}</p>
+          <p><strong>Book Name:</strong> ${inv.BOOK_NAME}</p>
+          <p><strong>Copy ID:</strong> ${inv.COPY_ID}</p>
+          <p><strong>Amount:</strong> ₹${inv.INVOICE_AMOUNT}</p>
+          <p><strong>Date:</strong> ${new Date(inv.INVOICE_DATE).toLocaleDateString()}</p>
         `;
         container.appendChild(div);
       });
-      invoices.forEach(inv => {
-  const div = document.createElement('div');
-  div.innerHTML = `
-    <hr>
-    <p><b>Invoice ID:</b> ${inv.INVOICE_ID}</p>
-    <p><b>Book:</b> ${inv.BOOK_NAME}</p>
-    <p><b>Copy ID:</b> ${inv.COPY_ID}</p>
-    <p><b>Amount:</b> ₹${inv.INVOICE_AMOUNT}</p>
-    <p><b>Date:</b> ${inv.INVOICE_DATE}</p>
-    <button onclick="returnBook(${inv.COPY_ID}, ${inv.INVOICE_ID})">🔁 Return Book</button>
-  `;
-  container.appendChild(div);
-});
-
     }
-
-    async function returnBook(copyId, invoiceId) {
-  const token = localStorage.getItem('token');
-  const res = await fetch('/api/returns', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({ copyId, invoiceId })
-  });
-
-  const data = await res.json();
-  if (res.ok) {
-    alert('✅ Book returned successfully!');
-    location.reload();
-  } else {
-    alert('❌ Return failed: ' + data.message);
-  }
-}
-
 
     fetchInvoices();
   </script>
+
 </body>
 </html>

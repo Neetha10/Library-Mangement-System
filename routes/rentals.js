@@ -23,22 +23,21 @@ router.post('/', verifyToken, async (req, res) => {
   const email = req.user.email;
 
   try {
-    const [customerRows] = await db.execute(
+    const customerResult = await db.execute(
       `SELECT CUSTOMER_ID FROM NSH_CUSTOMER WHERE EMAIL_ADDRESS = ?`,
       [email]
     );
 
-    const customer = customerRows[0];
-    if (!customer) {
+    if (!customerResult.rows || customerResult.rows.length === 0) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    const customerId = customer.CUSTOMER_ID;
+    const customerId = customerResult.rows[0].CUSTOMER_ID;
 
-    const [rentalIdResult] = await db.execute(
+    const rentalIdResult = await db.execute(
       `SELECT IFNULL(MAX(RENTAL_SERVICE_ID), 0) + 1 AS NEXT_ID FROM NSH_RENTAL_SERVICE`
     );
-    const rentalId = rentalIdResult[0].NEXT_ID;
+    const rentalId = rentalIdResult.rows[0].NEXT_ID;
 
     await db.execute(
       `INSERT INTO NSH_RENTAL_SERVICE (
@@ -61,19 +60,18 @@ router.get('/my', verifyToken, async (req, res) => {
   const email = req.user.email;
 
   try {
-    const [customerRows] = await db.execute(
+    const customerResult = await db.execute(
       `SELECT CUSTOMER_ID FROM NSH_CUSTOMER WHERE EMAIL_ADDRESS = ?`,
       [email]
     );
 
-    const customer = customerRows[0];
-    if (!customer) {
+    if (!customerResult.rows || customerResult.rows.length === 0) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    const customerId = customer.CUSTOMER_ID;
+    const customerId = customerResult.rows[0].CUSTOMER_ID;
 
-    const [borrowedRows] = await db.execute(
+    const borrowedResult = await db.execute(
       `SELECT RENTAL_SERVICE_ID, COPY_ID, RENTAL_STATUS, BORROWED_DATE, EXPECTED_RETURN_DATE
        FROM NSH_RENTAL_SERVICE
        WHERE CUSTOMER_ID = ?
@@ -81,7 +79,7 @@ router.get('/my', verifyToken, async (req, res) => {
       [customerId]
     );
 
-    res.status(200).json(borrowedRows || []);
+    res.status(200).json(borrowedResult.rows || []);
   } catch (err) {
     console.error('❌ Failed to fetch borrowed books:', err.message);
     res.status(500).json({ message: "Server error" });

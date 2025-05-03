@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>📚 My Room Reservations</title>
+  <title>🛠️ Manage All Reservations</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet" />
   <style>
@@ -14,13 +14,7 @@
     }
 
     .page-container {
-      flex-grow: 1;
-      min-height: 100%;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
       padding: 20px;
-      box-sizing: border-box;
     }
 
     h1 {
@@ -69,16 +63,6 @@
       z-index: 9999;
     }
 
-    .error-message {
-      background-color: #fdeaea;
-      color: #e74c3c;
-      padding: 15px;
-      border-radius: 8px;
-      margin: 15px 0;
-      text-align: center;
-      display: none;
-    }
-
     .empty-message {
       text-align: center;
       color: #666;
@@ -93,70 +77,62 @@
 </head>
 <body>
   <div class="page-container">
-    <div id="loadingOverlay">🔮 Fetching your magical reservations...</div>
-
-    <h1>📖 My Study Room Reservations</h1>
-
-    <div id="errorMessage" class="error-message"></div>
-
+    <div id="loadingOverlay">🔍 Fetching all reservations...</div>
+    <h1>🛠️ Manage All Reservations</h1>
     <div id="reservationList">
-      <p>🔄 Loading your reservations...</p>
-    </div>
-
-    <div style="margin-top: 40px">
-      <h2>📜 Cancelled Reservations</h2>
-      <div id="cancelLog"></div>
+      <p>Loading reservations...</p>
     </div>
   </div>
 
   <script>
-    function initReservationsView() {
+    function initManageReservationsView() {
       const container = document.getElementById("reservationList");
-      const cancelLog = document.getElementById("cancelLog");
-      const errorMessage = document.getElementById("errorMessage");
       const loadingOverlay = document.getElementById("loadingOverlay");
 
-      async function loadReservations() {
+      async function loadAllReservations() {
         try {
           const token = localStorage.getItem("token");
+          const isAdmin = (localStorage.getItem("role") || "").toLowerCase() === "admin";
 
-          if (!token) {
-            errorMessage.textContent = "❌ You must be logged in to view your reservations.";
-            errorMessage.style.display = "block";
-            container.innerHTML = "";
-            loadingOverlay.style.display = "none";
-            return;
-          }
 
-          const res = await fetch("/api/reservations/my", {
-            headers: { Authorization: "Bearer " + token }
+          const res = await fetch("/api/admin/rooms", {
+            headers: { Authorization: `Bearer ${token}` }
           });
 
           const data = await res.json();
           container.innerHTML = "";
 
-          if (!Array.isArray(data.reservations) || data.reservations.length === 0) {
-            container.innerHTML = "<div class='empty-message'>✨ You don't have any active reservations. Visit the Reserve Room section to book a study space.</div>";
+          const withReservations = data.filter(r => r.RESERVATION_ID);
+
+          if (withReservations.length === 0) {
+            container.innerHTML = "<div class='empty-message'>There are no active reservations at this time.</div>";
             return;
           }
 
-          data.reservations.forEach(r => {
+          withReservations.forEach(r => {
             const card = document.createElement("div");
             card.className = "card";
             card.innerHTML = `
               <h3>Room ${r.ROOM_ID}</h3>
+              <p><strong>Reserved By:</strong> ${r.FIRST_NAME} ${r.LAST_NAME}</p>
               <p><strong>Topic:</strong> ${r.TOPIC_DESCRIPTION}</p>
-              <p><strong>Date:</strong> ${r.RESERVATION_DATE.split('T')[0]}</p>
+              <p><strong>Date:</strong> ${r.RESERVATION_DATE?.split('T')[0]}</p>
               <p><strong>Time:</strong> ${r.START_TIME} - ${r.END_TIME}</p>
-              <button class="cancel-btn">Cancel</button>
+              <p><strong>Group Size:</strong> ${r.GROUP_SIZE}</p>
+              <button class="cancel-btn">Delete Reservation</button>
             `;
 
             card.querySelector(".cancel-btn").addEventListener("click", async () => {
-              if (confirm("Are you sure you want to cancel?")) {
-                await fetch(`/api/reservations/${r.RESERVATION_ID}`, {
-                  method: "DELETE",
-                  headers: { Authorization: "Bearer " + token }
-                });
+              if (confirm("Are you sure you want to delete this reservation?")) {
+                const endpoint = isAdmin 
+  ? `/api/reservations/admin/${r.RESERVATION_ID}` 
+  : `/api/reservations/${r.RESERVATION_ID}`;
+
+await fetch(endpoint, {
+  method: "DELETE",
+  headers: { Authorization: "Bearer " + token }
+});
+
                 card.remove();
               }
             });
@@ -165,18 +141,17 @@
           });
 
         } catch (err) {
-          console.error("❌", err);
-          errorMessage.textContent = "Failed to load reservations";
-          errorMessage.style.display = "block";
+          console.error("❌ Error loading reservations:", err);
+          container.innerHTML = "<div class='empty-message'>Failed to load reservations</div>";
         } finally {
           loadingOverlay.style.display = "none";
         }
       }
 
-      loadReservations();
+      loadAllReservations();
     }
 
-    document.addEventListener('DOMContentLoaded', initReservationsView);
+    document.addEventListener("DOMContentLoaded", initManageReservationsView);
   </script>
 </body>
 </html>

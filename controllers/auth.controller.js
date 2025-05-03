@@ -45,20 +45,13 @@ exports.syncUserData = async (req, res) => {
       await db.execute(
         `INSERT INTO NSH_CUSTOMER (
           CUSTOMER_ID, FIRST_NAME, LAST_NAME, PHONE_NUMBER, 
-          EMAIL_ADDRESS, IDENTIFICATION_TYPE, IDENTIFICATION_NUMBER
+          EMAIL_ADDRESS, IDENTIFICATION_TYPE, IDENTIFICATION_NUMBER, ROLE
         ) VALUES (
-          ?, ?, ?, ?, ?, ?, ?
+          ?, ?, ?, ?, ?, ?, ?, ?
         )`,
-        [
-          customerId,
-          firstName,
-          lastName,
-          phoneNumber,
-          email,
-          identificationType,
-          identificationNumber
-        ]
+        [customerId, firstName, lastName, phoneNumber, email, identificationType, identificationNumber, role]
       );
+      
 
       if (role === 'Author') {
         const authorIdResult = await db.execute(
@@ -103,15 +96,20 @@ exports.syncUserData = async (req, res) => {
           FIRST_NAME = ?, 
           LAST_NAME = ?, 
           PHONE_NUMBER = ?, 
+          EMAIL_ADDRESS=?,
           IDENTIFICATION_TYPE = ?, 
-          IDENTIFICATION_NUMBER = ?
+          IDENTIFICATION_NUMBER = ?,
+          ROLE=?
+
         WHERE CUSTOMER_ID = ?`,
         [
           firstName,
           lastName,
           phoneNumber,
+          email,
           identificationType,
           identificationNumber,
+          role,
           userData.CUSTOMER_ID
         ]
       );
@@ -160,7 +158,8 @@ exports.getUserProfile = async (req, res) => {
     console.log('👤 Fetching profile for email:', email);
 
     const userResult = await db.execute(
-      `SELECT * FROM NSH_CUSTOMER WHERE EMAIL_ADDRESS = ?`,
+      `SELECT CUSTOMER_ID, FIRST_NAME, LAST_NAME, EMAIL_ADDRESS, PHONE_NUMBER, IDENTIFICATION_TYPE, IDENTIFICATION_NUMBER, ROLE
+       FROM NSH_CUSTOMER WHERE EMAIL_ADDRESS = ?`,
       [email]
     );
 
@@ -180,7 +179,8 @@ exports.getUserProfile = async (req, res) => {
         email: userData.EMAIL_ADDRESS,
         phoneNumber: userData.PHONE_NUMBER,
         identificationType: userData.IDENTIFICATION_TYPE,
-        identificationNumber: userData.IDENTIFICATION_NUMBER
+        identificationNumber: userData.IDENTIFICATION_NUMBER,
+        role: userData.ROLE  // ✅ finally included!
       }
     });
   } catch (err) {

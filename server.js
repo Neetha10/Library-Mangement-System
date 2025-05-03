@@ -52,6 +52,11 @@ app.use('/api/rooms', roomsRoutes);
 const reservations = require('./routes/reservations');
 app.use('/api/reservations', reservations);
 
+// Top of server.js
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
+
+
 
 
 

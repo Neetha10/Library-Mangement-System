@@ -8,21 +8,26 @@
   <style>
     body {
       margin: 0;
-      font-family: 'Josefin Sans', sans-serif;
-      background-color: #faf7fd;
       display: flex;
       height: 100vh;
+      width: 100vw;
+      font-family: 'Josefin Sans', sans-serif;
+      background-color: #faf7fd;
+      overflow: hidden;
     }
 
     .sidebar {
       width: 240px;
+      min-width: 240px;
+      height: 100vh;
       padding: 20px;
       background-color: #483a5d;
       color: white;
       display: flex;
       flex-direction: column;
-      align-items: stretch;
       border-radius: 0 20px 20px 0;
+      flex-shrink: 0;
+      overflow-y: auto;
     }
 
     .sidebar h2 {
@@ -30,9 +35,7 @@
       color: #f9dfff;
       text-shadow: 1px 1px 2px #b082d1;
       margin-bottom: 25px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      text-align: center;
     }
 
     .sidebar button {
@@ -53,13 +56,17 @@
       color: #2c003e;
     }
 
-    main {
+    main#mainContent {
       flex-grow: 1;
-      padding: 30px;
+      display: flex;
+      flex-direction: column;
       overflow-y: auto;
-      background-color: #ffffff;
+      height: 100vh;
+      min-height: 100vh;
+      background-color: #fff;
       border-radius: 30px 0 0 30px;
       box-shadow: -10px 0 20px rgba(0, 0, 0, 0.05);
+      padding: 30px;
     }
 
     h1 {
@@ -76,7 +83,7 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       right: 0;
@@ -101,17 +108,11 @@
     }
   </style>
 </head>
+
 <body>
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <h2>🌸 Twilight</h2>
-    <button onclick="loadView('profile')">👤 Profile</button>
-    <button onclick="loadView('reserve-room')">🗼 Reserve Room</button>
-    <button onclick="loadView('reservations')">📒 My Reservations</button>
-    <button onclick="loadView('events')">🎟️ Events</button>
-    <button onclick="loadView('my-events')">🎓 My Event Registrations</button>
-    <button onclick="loadView('books')">📖 Book Catalog</button>
-    <button onclick="loadView('invoices')">📄 My Invoices</button>
-    <button onclick="logout()">📕 Logout</button>
+    <!-- Buttons will be added dynamically here -->
   </div>
 
   <div id="loader">
@@ -132,7 +133,7 @@
       apiKey: "AIzaSyAHOJtKIGyBEy6oY9RtqU8W1vvtToIS2ao",
       authDomain: "empyrean-surge-453502-k6.firebaseapp.com",
       projectId: "empyrean-surge-453502-k6",
-      storageBucket: "empyrean-surge-453502-k6.firebasestorage.app",
+      storageBucket: "empyrean-surge-453502-k6.appspot.com",
       messagingSenderId: "1048387947782",
       appId: "1:1048387947782:web:ff21b572c51ee7f1a72287",
       measurementId: "G-68LFENHPJL"
@@ -146,66 +147,112 @@
         const token = await user.getIdToken();
         localStorage.setItem("token", token);
         console.log("✅ Logged in:", user.email);
+        loadSidebar();
       }
     });
 
-    async function loadView(view) {
-      const main = document.getElementById("mainContent");
-      main.innerHTML = "<p class='loading'>Loading " + view + " section...</p>";
+    function loadSidebar() {
+      const role = localStorage.getItem('role') || 'customer'; // Assume customer by default
+      const sidebar = document.getElementById('sidebar');
 
-      try {
-        const res = await fetch(`/${view}.html`);
-        const html = await res.text();
+      // Clear existing buttons if any
+      sidebar.querySelectorAll('button').forEach(btn => btn.remove());
 
-        const temp = document.createElement("div");
-        temp.innerHTML = html;
+      const features = [
+        { label: "👤 Profile", view: "profile" },
+        { label: "🗼 Reserve Room", view: "reserve-room" },
+        { label: "📒 My Reservations", view: "reservations" },
+        { label: "🎟️ Events", view: "events" },
+        { label: "🎓 My Event Registrations", view: "my-events" },
+        { label: "📖 Book Catalog", view: "books" },
+        { label: "📄 My Invoices", view: "invoices" },
+        { label: "📚 Borrowed Books", view: "borrowed-books" }
 
-        const scripts = temp.querySelectorAll("script");
-        main.innerHTML = temp.innerHTML;
+      ];
 
-        // Execute scripts one by one
-        for (const script of scripts) {
-          const newScript = document.createElement("script");
-          if (script.src) {
-            newScript.src = script.src;
-            newScript.onload = () => {
-              console.log(`✅ Loaded external script: ${script.src}`);
-            };
-          } else {
-            newScript.textContent = script.textContent;
-          }
-          await new Promise(resolve => {
-            document.body.appendChild(newScript);
-            setTimeout(resolve, 100); // Brief delay to ensure script execution
-          });
-        }
+      if (role === 'admin') {
+        features.push(
+          { label: "🏨 Manage Rooms", view: "manage-rooms" },
+          { label: "👥 Manage Users", view: "manage-users" },
+          { label: "📜 View All Invoices", view: "all-invoices" },
+          { label: "📆 Manage Reservations", view: "manage-reservations" },
+          { label: "📚 Manage Events", view: "manage-events" } 
 
-        // Call initialization function if it exists
-        const initFunctionName = `init${view.charAt(0).toUpperCase() + view.slice(1)}View`;
-        if (window[initFunctionName] && typeof window[initFunctionName] === 'function') {
-          console.log(`✅ Calling ${initFunctionName}()`);
-          window[initFunctionName]();
-        }
-
-        console.log(`✅ Loaded ${view}.html and executed scripts`);
-      } catch (err) {
-        main.innerHTML = "<p class='loading'>⚠️ Failed to load section.</p>";
-        console.error("❌ Error loading view:", err);
+        );
       }
+
+      features.forEach(feature => {
+        const button = document.createElement('button');
+        button.innerText = feature.label;
+        button.onclick = () => loadView(feature.view);
+        sidebar.appendChild(button);
+      });
+
+      const logoutBtn = document.createElement('button');
+      logoutBtn.innerText = "📕 Logout";
+      logoutBtn.onclick = logout;
+      sidebar.appendChild(logoutBtn);
     }
+    async function loadView(view) {
+  const main = document.getElementById("mainContent");
+  main.innerHTML = "<p class='loading'>Loading " + view + " section...</p>";
+
+  try {
+    const res = await fetch(`/${view}.html`);
+    const html = await res.text();
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+
+    const scripts = temp.querySelectorAll("script");
+    main.innerHTML = temp.innerHTML;
+
+    for (const script of scripts) {
+      const newScript = document.createElement("script");
+      if (script.src) {
+        newScript.src = script.src;
+      } else {
+        newScript.textContent = script.textContent;
+      }
+      document.body.appendChild(newScript);
+    }
+
+    // ✨ Smart function name resolver:
+    const functionName = view.includes('-')
+      ? `init${view.split('-').map((part, idx) => idx === 0 ? capitalize(part) : capitalize(part)).join('')}View`
+      : `init${capitalize(view)}View`;
+
+    console.log("🔎 Looking for function:", functionName);
+
+    if (typeof window[functionName] === 'function') {
+      window[functionName]();
+    } else {
+      console.warn('⚠️ No init function found for view:', view);
+    }
+
+  } catch (err) {
+    console.error("❌ Error loading view:", err);
+    main.innerHTML = "<p class='loading'>⚠️ Failed to load section.</p>";
+  }
+}
+
+function capitalize(word) {
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+
 
     function logout() {
       firebase.auth().signOut().then(() => {
-        localStorage.removeItem("token");
+        localStorage.clear();
         window.location.href = "/login.html";
       });
     }
 
-    window.addEventListener("DOMContentLoaded", async () => {
-      setTimeout(async () => {
+    window.addEventListener("DOMContentLoaded", () => {
+      setTimeout(() => {
         document.getElementById("loader").style.display = "none";
         document.getElementById("mainContent").style.display = "block";
-        await loadView("profile"); // Load profile by default
+        loadView("profile");
       }, 1500);
     });
   </script>

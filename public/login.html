@@ -41,7 +41,7 @@
       margin-bottom: 5px;
       color: #7b4b94;
     }
-    input, select {
+    input {
       width: 100%;
       padding: 10px;
       margin-bottom: 20px;
@@ -68,6 +68,7 @@
       color: red;
       font-size: 0.9rem;
       text-align: center;
+      margin-top: 10px;
     }
     .register-link {
       text-align: center;
@@ -91,14 +92,6 @@
       <label for="password">🔒 Password</label>
       <input type="password" id="password" required>
 
-      <label for="role">🧝‍♀️ Select Role</label>
-      <select id="role" required>
-        <option value="" disabled selected>Select your role</option>
-        <option value="customer">Customer</option>
-        <option value="author">Author</option>
-        <option value="sponsor">Sponsor</option>
-      </select>
-
       <button id="loginButton">✨ Login</button>
       <div id="errorMessage" class="error"></div>
     </div>
@@ -107,14 +100,16 @@
     </div>
   </div>
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAHOJtKIGyBEy6oY9RtqU8W1vvtToIS2ao",
       authDomain: "empyrean-surge-453502-k6.firebaseapp.com",
       projectId: "empyrean-surge-453502-k6",
-      storageBucket: "empyrean-surge-453502-k6.firebasestorage.app",
+      storageBucket: "empyrean-surge-453502-k6.appspot.com",
       messagingSenderId: "1048387947782",
       appId: "1:1048387947782:web:ff21b572c51ee7f1a72287",
       measurementId: "G-68LFENHPJL"
@@ -128,12 +123,11 @@
     loginButton.addEventListener('click', async () => {
       errorMessage.textContent = '';
 
-      const email = document.getElementById('email').value;
+      const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-      const role = document.getElementById('role').value;
 
-      if (!email || !password || !role) {
-        errorMessage.textContent = 'Email, password, and role are required';
+      if (!email || !password) {
+        errorMessage.textContent = 'Email and password are required.';
         return;
       }
 
@@ -141,27 +135,43 @@
         const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
-        // ✅ Fetch fresh token
-        const idToken = await user.getIdToken(true);
+        const idToken = await user.getIdToken(true); // Force fresh token
         localStorage.setItem('token', idToken);
-        localStorage.setItem('role', role);
 
-        // ✅ Setup auto-refresh token listener
+        // ⭐ Fetch user's real role from your backend
+        const res = await fetch('/api/auth/profile', {
+          headers: { Authorization: `Bearer ${idToken}` }
+        });
+
+        const profile = await res.json();
+        console.log('✅ Fetched profile:', profile);
+
+        if (!profile?.user?.role) {
+  errorMessage.textContent = 'Login failed: role not found in profile.';
+  return;
+}
+const role = profile.user.role.toLowerCase();
+localStorage.setItem('role', role);
+
+
+
+        // Refresh token background updater
         firebase.auth().onIdTokenChanged(async (user) => {
           if (user) {
-            const refreshedToken = await user.getIdToken();
-            localStorage.setItem('token', refreshedToken);
+            const newToken = await user.getIdToken();
+            localStorage.setItem('token', newToken);
           }
         });
 
-        // ✅ Redirect to dashboard
-        window.location.href = 'dashboard.html';
+        // 🚀 Go to dashboard
+        window.location.href = "dashboard.html";
 
-      } catch (error) {
-        console.error('Login error:', error);
-        errorMessage.textContent = error.message || 'Login failed';
+      } catch (err) {
+        console.error('Login error:', err);
+        errorMessage.textContent = err.message || 'Login failed.';
       }
     });
   </script>
+
 </body>
 </html>

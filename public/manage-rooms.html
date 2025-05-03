@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🏨 Manage Study Rooms | Twilight Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #faf7fd;
+      font-family: 'Josefin Sans', sans-serif;
+      padding: 30px;
+      overflow: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #5c3d99;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #ccc;
+    }
+    th {
+      background-color: #7b4b94;
+      color: white;
+    }
+    .empty-message {
+      text-align: center;
+      margin-top: 40px;
+      color: #777;
+      font-style: italic;
+    }
+    button {
+      padding: 6px 10px;
+      margin: 2px;
+      border: none;
+      border-radius: 4px;
+      background-color: #a388d4;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #8c6bbd;
+    }
+    #addButtonContainer {
+      text-align: right;
+      margin-top: 10px;
+    }
+    .table-scroll {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 70vh;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+    }
+  </style>
+  
+</head>
+<body>
+
+  <h1>🏨 Manage Study Rooms</h1>
+
+  <div id="addButtonContainer">
+    <button onclick="openAddRoomModal()">➕ Add Room</button>
+  </div>
+
+  <div id="roomTable">Loading rooms...</div>
+
+  <script>
+    window.initManageRoomsView = function () {
+      console.log("🧹 initManageRoomsView running...");
+  
+      const container = document.getElementById('roomTable');
+      const addButtonContainer = document.getElementById('addButtonContainer');
+      const role = (localStorage.getItem('role') || '').toLowerCase();
+      console.log("🔍 Role from localStorage:", localStorage.getItem('role'));
+
+      const isAdmin = role === 'admin';
+  
+      // 🔒 Hide the add button if not admin
+      if (!isAdmin) {
+        addButtonContainer.style.display = 'none';
+      }
+  
+      async function loadRooms() {
+        console.log("🔵 loadRooms() called...");
+        try {
+          const token = localStorage.getItem('token');
+  
+          const res = await fetch('/api/admin/rooms', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'x-role': role
+            }
+          });
+  
+          const rooms = await res.json();
+          console.log("✅ Rooms fetched:", rooms);
+  
+          if (!rooms || !rooms.length) {
+            container.innerHTML = '<div class="empty-message">No study rooms found.</div>';
+            return;
+          }
+  
+          let tableHTML = `
+            <table>
+              <thead>
+                <tr>
+                  <th>Room ID</th>
+                  <th>Capacity</th>
+                  <th>Status</th>
+                  <th>Booked By</th>
+                  <th>Reason</th>
+                  <th>Reservation Date</th>
+                  <th>Start Time</th>
+                  <th>End Time</th>
+                  <th>Group Size</th>
+                  ${isAdmin ? '<th>Actions</th>' : ''}
+                </tr>
+              </thead>
+              <tbody>`;
+  
+          rooms.forEach(room => {
+            tableHTML += `
+              <tr>
+                <td>${room.ROOM_ID ?? ''}</td>
+                <td>${room.CAPACITY ?? ''}</td>
+                <td>${room.ROOM_STATUS ?? ''}</td>
+                <td>${room.FIRST_NAME ? `${room.FIRST_NAME} ${room.LAST_NAME}` : '-'}</td>
+                <td>${room.TOPIC_DESCRIPTION ?? '-'}</td>
+                <td>${room.RESERVATION_DATE ? new Date(room.RESERVATION_DATE).toLocaleDateString() : '-'}</td>
+                <td>${room.START_TIME ?? '-'}</td>
+                <td>${room.END_TIME ?? '-'}</td>
+                <td>${room.GROUP_SIZE ?? '-'}</td>
+                ${isAdmin ? `
+                  <td>
+                    <button onclick="openEditRoomModal(${room.ROOM_ID}, ${room.CAPACITY})">✏️</button>
+                    <button onclick="deleteRoom(${room.ROOM_ID})">🗑️</button>
+                  </td>` : ''
+                }
+              </tr>`;
+          });
+  
+          tableHTML += '</tbody></table>';
+          container.innerHTML = `<div class="table-scroll">${tableHTML}</div>`;
+  
+        } catch (err) {
+          console.error('❌ Failed to fetch rooms:', err);
+          container.innerHTML = `<div class="empty-message">Error loading rooms: ${err.message}</div>`;
+        }
+      }
+  
+      loadRooms();
+    };
+  
+    window.openAddRoomModal = function () {
+      const roomId = prompt("Enter new Room ID:");
+      const capacity = prompt("Enter Room Capacity:");
+      if (!roomId || !capacity) return alert("All fields required!");
+  
+      const token = localStorage.getItem('token');
+      fetch('/api/admin/rooms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ roomId, capacity })
+      }).then(res => res.json()).then(data => {
+        alert(data.message || 'Room added!');
+        window.initManageRoomsView();
+      }).catch(err => alert("Error adding room."));
+    };
+  
+    window.openEditRoomModal = function (roomId, currentCapacity) {
+      const newCapacity = prompt(`Update capacity for Room ${roomId}:`, currentCapacity);
+      if (!newCapacity) return;
+  
+      const token = localStorage.getItem('token');
+      fetch(`/api/admin/rooms/${roomId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ capacity: newCapacity })
+      }).then(res => res.json()).then(data => {
+        alert(data.message || 'Room updated!');
+        window.initManageRoomsView();
+      }).catch(err => alert("Error updating room."));
+    };
+  
+    window.deleteRoom = async function (roomId) {
+  const token = localStorage.getItem('token');
+
+  try {
+    // 1️⃣ Fetch reservations for this room
+    const res = await fetch(`/api/admin/rooms/${roomId}/reservations`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const reservations = await res.json();
+
+    // 2️⃣ If there are reservations, ask for confirmation
+    if (reservations.length > 0) {
+      let msg = `⚠️ This room has ${reservations.length} reservation(s):\n\n`;
+      reservations.forEach((r, i) => {
+        msg += `${i + 1}. ${r.FIRST_NAME} ${r.LAST_NAME} on ${new Date(r.RESERVATION_DATE).toLocaleDateString()} (${r.START_TIME} - ${r.END_TIME})\n`;
+      });
+      msg += `\nDo you want to delete ALL reservations and then delete this room?`;
+
+      const confirmDelete = confirm(msg);
+      if (!confirmDelete) return;
+
+      // 3️⃣ Delete reservations first
+      await fetch(`/api/admin/rooms/${roomId}/reservations`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    }
+
+    // 4️⃣ Proceed to delete the room
+    const deleteRes = await fetch(`/api/admin/rooms/${roomId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const data = await deleteRes.json();
+    alert(data.message || 'Room deleted!');
+    window.initManageRoomsView();
+
+  } catch (err) {
+    console.error("❌ Error deleting room:", err);
+    alert("Error deleting room.");
+  }
+};
+
+  
+    // Automatically initialize on load
+    window.onload = window.initManageRoomsView;
+  </script>
+  
+  
+
+</body>
+</html>

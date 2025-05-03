@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>📜 All Invoices | Admin Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Josefin Sans', sans-serif;
+      background: linear-gradient(to bottom, #fff8f0, #eef4ff);
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #5c3d99;
+      margin-bottom: 30px;
+    }
+
+    .invoice-card {
+      background: #fefeff;
+      border-left: 6px solid #a388d4;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px auto;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+      max-width: 700px;
+    }
+
+    .invoice-card p {
+      margin: 8px 0;
+      font-size: 1rem;
+    }
+
+    .no-invoices {
+      text-align: center;
+      font-style: italic;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📜 All Invoices (Admin View)</h1>
+
+  <div id="invoiceContainer">Loading invoices...</div>
+
+  <script>
+    async function loadAllInvoices() {
+      const container = document.getElementById("invoiceContainer");
+      const token = localStorage.getItem("token");
+      const role = localStorage.getItem("role");
+
+      try {
+        const res = await fetch("/api/admin/invoices", {
+          headers: {
+            Authorization: "Bearer " + token,
+            "x-role": role
+          }
+        });
+
+        const data = await res.json();
+        container.innerHTML = "";
+
+        if (!Array.isArray(data) || data.length === 0) {
+          container.innerHTML = '<div class="no-invoices">✨ No invoices found.</div>';
+          return;
+        }
+
+        data.forEach(inv => {
+          const div = document.createElement("div");
+          div.className = "invoice-card";
+          div.innerHTML = `
+            <p><strong>Invoice ID:</strong> ${inv.INVOICE_ID}</p>
+            <p><strong>Customer:</strong> ${inv.FIRST_NAME || ''} ${inv.LAST_NAME || ''}</p>
+            <p><strong>Book:</strong> ${inv.BOOK_NAME || 'Unknown'} (Copy ID: ${inv.COPY_ID || 'N/A'})</p>
+            <p><strong>Amount:</strong> ₹${inv.INVOICE_AMOUNT ?? '0.00'}</p>
+            <p><strong>Date:</strong> ${inv.INVOICE_DATE ? new Date(inv.INVOICE_DATE).toLocaleDateString() : 'N/A'}</p>
+          `;
+          container.appendChild(div);
+        });
+
+      } catch (err) {
+        console.error("❌ Error loading invoices:", err);
+        container.innerHTML = `<div class="no-invoices">Failed to load invoices.</div>`;
+      }
+    }
+
+    // ✅ Expose the function globally for dashboard loader
+    window.initAllInvoicesView = function () {
+      loadAllInvoices();
+    };
+  </script>
+</body>
+</html>

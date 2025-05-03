@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>📚 My Borrowed Books</title>
+  <title>📚 My Borrowed Books | Twilight Library</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Josefin Sans', sans-serif;
-      background: linear-gradient(to bottom, #f8f9fa, #e2e6ea);
+      background: linear-gradient(to bottom, #fdfbfb, #ebedee);
+      background-image: url('https://www.transparenttextures.com/patterns/diamond-upholstery.png');
       padding: 20px;
     }
     h1 {
@@ -17,25 +18,38 @@
       margin-bottom: 30px;
     }
     .book-card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      padding: 20px;
+      background: #fff8f0;
+      border-radius: 16px;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+      padding: 25px;
       margin: 15px auto;
       max-width: 600px;
-      border-left: 6px solid #ffa07a;
+      border-left: 8px solid #ffa07a;
+      transition: transform 0.3s;
+    }
+    .book-card:hover {
+      transform: scale(1.02);
     }
     .book-card button {
       background: #5c3d99;
       color: white;
       border: none;
-      padding: 8px 14px;
+      padding: 10px 16px;
       border-radius: 8px;
       cursor: pointer;
-      margin-top: 10px;
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 1rem;
+      box-shadow: 0 4px 10px rgba(92,61,153,0.2);
     }
     .book-card button:hover {
       background: #7b4b94;
+    }
+    .no-books {
+      text-align: center;
+      font-size: 1.2rem;
+      color: #888;
+      margin-top: 40px;
     }
   </style>
 </head>
@@ -59,7 +73,7 @@
         if (!Array.isArray(rentals)) throw new Error("Not an array");
       } catch (err) {
         console.error("❌ Failed to load rentals:", err.message);
-        document.getElementById("borrowedBooks").innerHTML = "<p>Error loading borrowed books.</p>";
+        document.getElementById("borrowedBooks").innerHTML = "<div class='no-books'>✨ Error loading borrowed books. Please try again!</div>";
         return;
       }
 
@@ -67,7 +81,7 @@
       container.innerHTML = '';
 
       if (rentals.length === 0) {
-        container.innerHTML = '<p>You have not borrowed any books yet.</p>';
+        container.innerHTML = '<div class="no-books">✨ You have not borrowed any books yet. ✨</div>';
         return;
       }
 
@@ -79,7 +93,7 @@
           <p><strong>Borrowed Date:</strong> ${new Date(book.BORROWED_DATE).toLocaleDateString()}</p>
           <p><strong>Expected Return:</strong> ${new Date(book.EXPECTED_RETURN_DATE).toLocaleDateString()}</p>
           <p><strong>Status:</strong> ${book.RENTAL_STATUS}</p>
-          ${book.RENTAL_STATUS === 'Borrowed' ? `<button onclick="returnBook(${book.RENTAL_SERVICE_ID})">Return</button>` : ''}
+          ${book.RENTAL_STATUS === 'Borrowed' ? `<button onclick="returnBook(${book.RENTAL_SERVICE_ID})">🔁 Return Book</button>` : ''}
         `;
         container.appendChild(div);
       });
@@ -88,7 +102,7 @@
     async function returnBook(rentalServiceId) {
       const token = localStorage.getItem("token");
 
-      if (!confirm("Are you sure you want to return this book?")) return;
+      if (!confirm("Are you sure you want to return this book? ✨")) return;
 
       const res = await fetch(`/api/rentals/return/${rentalServiceId}`, {
         method: "PUT",
@@ -98,8 +112,8 @@
       });
 
       const data = await res.json();
-      alert(data.message || 'Return complete');
-      fetchBorrowedBooks(); // Refresh list
+      alert(data.message || 'Return complete!');
+      fetchBorrowedBooks(); // Refresh list after return
     }
 
     fetchBorrowedBooks();
