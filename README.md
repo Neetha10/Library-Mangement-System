@@ -1,20 +1,20 @@
-# 📚 Library Management System  
+# Library Management System  
 *A Database Design and Web Application Project (NYU, Jan–May 2025)*  
 
-## 📌 Overview  
+## Overview  
 This project implements a **Library Management System (LMS)** to automate core library operations such as book rentals, room reservations, event management, and invoicing. It integrates a **normalized MySQL relational schema** with a **Node.js + Express backend** and **Firebase Authentication** for secure, role-based access.  
 
 Key features include:  
-- 🔑 Role-based access (Admin, Author, Customer, Sponsor)  
-- 🗂️ Book inventory management with rentals and returns  
-- 📅 Study room reservations with concurrency control  
-- 💳 Automated invoice generation via SQL triggers  
-- 🎟️ Event, seminar, and exhibition management  
-- 🛡️ Security features: SQL injection prevention, stored procedures, JWT tokens, parameterized queries, and security questions for password reset  
+-  Role-based access (Admin, Author, Customer, Sponsor)  
+-  Book inventory management with rentals and returns  
+-  Study room reservations with concurrency control  
+-  Automated invoice generation via SQL triggers  
+-  Event, seminar, and exhibition management  
+-  Security features: SQL injection prevention, stored procedures, JWT tokens, parameterized queries, and security questions for password reset  
 
 ---
 
-## 🛠️ Tech Stack  
+## Tech Stack  
 - **Database**: MySQL (20+ normalized tables, triggers, stored procedures, indexing)  
 - **Backend**: Node.js, Express.js  
 - **Authentication**: Firebase Authentication + JWT  
@@ -23,7 +23,7 @@ Key features include:
 
 ---
 
-## 📂 Project Structure  
+## Project Structure  
 ```
 ├── config/          # DB connection & environment setup
 ├── controllers/     # Business logic & SQL operations
@@ -37,7 +37,7 @@ Key features include:
 
 ---
 
-## ⚙️ Setup Instructions  
+##  Setup Instructions  
 
 ### 1. Clone the Repository  
 ```bash
@@ -66,7 +66,6 @@ Import `schema.sql` into MySQL to create tables, triggers, and stored procedures
 ```bash
 npm start
 ```
-App will be available at **http://localhost:3000**  
 
 ---
 
@@ -87,13 +86,7 @@ App will be available at **http://localhost:3000**
 
 ---
 
-##  Future Improvements  
-- Book borrowing/return notifications via email  
-- Mobile-friendly frontend (React/Angular)  
-- Analytics dashboards for admins (usage patterns, revenue trends)  
-
----
 
 
-## 🔗 GitHub Link  
-[Library Management System Repository](https://github.com/your-username/Library-Management-System)  
+
+
