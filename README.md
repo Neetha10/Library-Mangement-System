@@ -1,5 +1,5 @@
 # Library Management System  
-*A Database Design and Web Application Project (NYU, Jan–May 2025)*  
+*A Database Design and Web Application Project. 
 
 ## Overview  
 This project implements a **Library Management System (LMS)** to automate core library operations such as book rentals, room reservations, event management, and invoicing. It integrates a **normalized MySQL relational schema** with a **Node.js + Express backend** and **Firebase Authentication** for secure, role-based access.  
